@@ -12,6 +12,7 @@ function encrypt(text) {
   const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
   return iv.toString('hex') + ':' + encrypted.toString('hex');
 }
+
 function decrypt(hash) {
   try {
     if (!hash.includes(':')) throw new Error('Invalid encrypted format');
@@ -27,7 +28,6 @@ function decrypt(hash) {
     return '[DECRYPTION_FAILED]';
   }
 }
-
 
 exports.addCredential = async (req, res) => {
   try {
@@ -70,5 +70,29 @@ exports.deleteCredential = async (req, res) => {
   } catch (error) {
     console.error("❌ Error in deleteCredential:", error);
     res.status(500).json({ error: 'Failed to delete credential' });
+  }
+};
+
+exports.updateCredential = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { website, username, password } = req.body;
+
+    const encryptedPassword = encrypt(password);
+
+    const updated = await Credential.findOneAndUpdate(
+      { _id: id, userId: req.user.id },
+      { website, username, password: encryptedPassword },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Credential not found or not authorized' });
+    }
+
+    res.status(200).json({ message: 'Credential updated successfully' });
+  } catch (error) {
+    console.error("❌ Error in updateCredential:", error);
+    res.status(500).json({ error: 'Failed to update credential' });
   }
 };
